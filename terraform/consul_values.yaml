@@ -1,0 +1,61 @@
+global:
+  enablePodSecurityPolicies: true
+  gossipEncryption:
+    secretName: "consul-gossip-key"
+    secretKey: "gossipkey"
+dns:
+  enabled: true
+ui:
+  enabled: true
+server:
+  storage: 20Gi
+  storageClass: standard
+  extraVolumes:
+    - type: secret
+      name: consul-certs
+      load: false
+    - type: secret
+      name: consul-gossip-key
+      load: false
+  extraConfig: |
+    {
+        "ca_file": "/consul/userconfig/consul-certs/ca.pem",
+        "cert_file": "/consul/userconfig/consul-certs/consul.pem",
+        "key_file": "/consul/userconfig/consul-certs/consul-key.pem",
+        "ports": {
+          "https": 8501
+        },
+        "performance": {
+          "raft_multiplier": 1
+        },
+        "log_level": "INFO",
+        "verify_incoming": true,
+        "verify_outgoing": true,
+        "verify_server_hostname": true,
+        "disable_keyring_file": true,
+        "disable_host_node_id": true
+    }
+client:
+  grpc: true
+  extraVolumes:
+    - type: secret
+      name: consul-certs
+      load: false
+    - type: secret
+      name: consul-gossip-key
+      load: false
+  extraConfig: |
+    {
+        "ca_file": "/consul/userconfig/consul-certs/ca.pem",
+        "cert_file": "/consul/userconfig/consul-certs/consul.pem",
+        "key_file": "/consul/userconfig/consul-certs/consul-key.pem",
+        "ports": {
+          "https": 8501
+        },
+        "log_level": "INFO",
+        "verify_incoming": true,
+        "verify_outgoing": true,
+        "verify_server_hostname": true,
+        "disable_keyring_file": true,
+        "disable_host_node_id": true
+    }
