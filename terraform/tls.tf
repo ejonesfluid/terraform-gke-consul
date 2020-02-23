@@ -43,7 +43,7 @@ resource "tls_cert_request" "consul-req" {
   ]
 
   ip_addresses = [
-    google_compute_address.vault.address,
+    google_compute_address.consul.address,
   ]
 
   subject {

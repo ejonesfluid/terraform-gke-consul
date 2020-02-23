@@ -17,7 +17,7 @@ resource "random_id" "project_random" {
 }
 
 # Create the project if one isn't specified
-resource "google_project" "vault" {
+resource "google_project" "consul" {
   count           = var.project != "" ? 0 : 1
   name            = random_id.project_random.hex
   project_id      = random_id.project_random.hex
@@ -26,7 +26,7 @@ resource "google_project" "vault" {
 }
 
 # Or use an existing project, if defined
-data "google_project" "vault" {
+data "google_project" "consul" {
   count      = var.project != "" ? 1 : 0
   project_id = var.project
 }
@@ -35,47 +35,47 @@ data "google_project" "vault" {
 # existing data project resource One will be populated and the other will be
 # null
 locals {
-  vault_project_id = element(
+  consul_project_id = element(
     concat(
-      data.google_project.vault.*.project_id,
-      google_project.vault.*.project_id,
+      data.google_project.consul.*.project_id,
+      google_project.consul.*.project_id,
     ),
     0,
   )
 }
 
-# Create the vault service account
-resource "google_service_account" "vault-server" {
-  account_id   = "vault-server"
+# Create the consul service account
+resource "google_service_account" "consul-server" {
+  account_id   = "consul-server"
   display_name = "Vault Server"
-  project      = local.vault_project_id
+  project      = local.consul_project_id
 }
 
 # Create a service account key
-resource "google_service_account_key" "vault" {
-  service_account_id = google_service_account.vault-server.name
+resource "google_service_account_key" "consul" {
+  service_account_id = google_service_account.consul-server.name
 }
 
 # Add the service account to the project
 resource "google_project_iam_member" "service-account" {
   count   = length(var.service_account_iam_roles)
-  project = local.vault_project_id
+  project = local.consul_project_id
   role    = element(var.service_account_iam_roles, count.index)
-  member  = "serviceAccount:${google_service_account.vault-server.email}"
+  member  = "serviceAccount:${google_service_account.consul-server.email}"
 }
 
 # Add user-specified roles
 resource "google_project_iam_member" "service-account-custom" {
   count   = length(var.service_account_custom_iam_roles)
-  project = local.vault_project_id
+  project = local.consul_project_id
   role    = element(var.service_account_custom_iam_roles, count.index)
-  member  = "serviceAccount:${google_service_account.vault-server.email}"
+  member  = "serviceAccount:${google_service_account.consul-server.email}"
 }
 
 # Enable required services on the project
 resource "google_project_service" "service" {
   count   = length(var.project_services)
-  project = local.vault_project_id
+  project = local.consul_project_id
   service = element(var.project_services, count.index)
 
   # Do not disable the service on destroy. On destroy, we are going to
@@ -85,95 +85,95 @@ resource "google_project_service" "service" {
 }
 
 # Create an external NAT IP
-resource "google_compute_address" "vault-nat" {
+resource "google_compute_address" "consul-nat" {
   count   = 2
-  name    = "vault-nat-external-${count.index}"
-  project = local.vault_project_id
+  name    = "consul-nat-external-${count.index}"
+  project = local.consul_project_id
   region  = var.region
 
   depends_on = [google_project_service.service]
 }
 
 # Create a network for GKE
-resource "google_compute_network" "vault-network" {
-  name                    = "vault-network"
-  project                 = local.vault_project_id
+resource "google_compute_network" "consul-network" {
+  name                    = "consul-network"
+  project                 = local.consul_project_id
   auto_create_subnetworks = false
 
   depends_on = [google_project_service.service]
 }
 
 # Create subnets
-resource "google_compute_subnetwork" "vault-subnetwork" {
-  name          = "vault-subnetwork"
-  project       = local.vault_project_id
-  network       = google_compute_network.vault-network.self_link
+resource "google_compute_subnetwork" "consul-subnetwork" {
+  name          = "consul-subnetwork"
+  project       = local.consul_project_id
+  network       = google_compute_network.consul-network.self_link
   region        = var.region
   ip_cidr_range = var.kubernetes_network_ipv4_cidr
 
   private_ip_google_access = true
 
   secondary_ip_range {
-    range_name    = "vault-pods"
+    range_name    = "consul-pods"
     ip_cidr_range = var.kubernetes_pods_ipv4_cidr
   }
 
   secondary_ip_range {
-    range_name    = "vault-svcs"
+    range_name    = "consul-svcs"
     ip_cidr_range = var.kubernetes_services_ipv4_cidr
   }
 }
 
 # Create a NAT router so the nodes can reach DockerHub, etc
-resource "google_compute_router" "vault-router" {
-  name    = "vault-router"
-  project = local.vault_project_id
+resource "google_compute_router" "consul-router" {
+  name    = "consul-router"
+  project = local.consul_project_id
   region  = var.region
-  network = google_compute_network.vault-network.self_link
+  network = google_compute_network.consul-network.self_link
 
   bgp {
     asn = 64514
   }
 }
 
-resource "google_compute_router_nat" "vault-nat" {
-  name    = "vault-nat-1"
-  project = local.vault_project_id
-  router  = google_compute_router.vault-router.name
+resource "google_compute_router_nat" "consul-nat" {
+  name    = "consul-nat-1"
+  project = local.consul_project_id
+  router  = google_compute_router.consul-router.name
   region  = var.region
 
   nat_ip_allocate_option = "MANUAL_ONLY"
-  nat_ips                = google_compute_address.vault-nat.*.self_link
+  nat_ips                = google_compute_address.consul-nat.*.self_link
 
   source_subnetwork_ip_ranges_to_nat = "LIST_OF_SUBNETWORKS"
 
   subnetwork {
-    name                    = google_compute_subnetwork.vault-subnetwork.self_link
+    name                    = google_compute_subnetwork.consul-subnetwork.self_link
     source_ip_ranges_to_nat = ["PRIMARY_IP_RANGE", "LIST_OF_SECONDARY_IP_RANGES"]
 
     secondary_ip_range_names = [
-      google_compute_subnetwork.vault-subnetwork.secondary_ip_range[0].range_name,
-      google_compute_subnetwork.vault-subnetwork.secondary_ip_range[1].range_name,
+      google_compute_subnetwork.consul-subnetwork.secondary_ip_range[0].range_name,
+      google_compute_subnetwork.consul-subnetwork.secondary_ip_range[1].range_name,
     ]
   }
 }
 
 # Get latest cluster version
 data "google_container_engine_versions" "versions" {
-  project  = local.vault_project_id
+  project  = local.consul_project_id
   location = var.region
 }
 
 # Create the GKE cluster
-resource "google_container_cluster" "vault" {
+resource "google_container_cluster" "default" {
   provider = google-beta
 
-  name     = "vault"
-  project  = local.vault_project_id
+  name     = "consul"
+  project  = local.consul_project_id
   location = var.region
 
-  network    = google_compute_network.vault-network.self_link
-  subnetwork = google_compute_subnetwork.vault-subnetwork.self_link
+  network    = google_compute_network.consul-network.self_link
+  subnetwork = google_compute_subnetwork.consul-subnetwork.self_link
 
   initial_node_count = var.kubernetes_nodes_per_zone
 
@@ -189,7 +189,7 @@ resource "google_container_cluster" "vault" {
 
   node_config {
     machine_type    = var.kubernetes_instance_type
-    service_account = google_service_account.vault-server.email
+    service_account = google_service_account.consul-server.email
 
     oauth_scopes = [
       "https://www.googleapis.com/auth/cloud-platform",
@@ -202,10 +202,10 @@ resource "google_container_cluster" "vault" {
     }
 
     labels = {
-      service = "vault"
+      service = "consul"
     }
 
-    tags = ["vault"]
+    tags = ["consul"]
 
     # Protect node metadata
     workload_metadata_config {
@@ -252,8 +252,8 @@ resource "google_container_cluster" "vault" {
 
   # Allocate IPs in our subnetwork
   ip_allocation_policy {
-    cluster_secondary_range_name  = google_compute_subnetwork.vault-subnetwork.secondary_ip_range[0].range_name
-    services_secondary_range_name = google_compute_subnetwork.vault-subnetwork.secondary_ip_range[1].range_name
+    cluster_secondary_range_name  = google_compute_subnetwork.consul-subnetwork.secondary_ip_range[0].range_name
+    services_secondary_range_name = google_compute_subnetwork.consul-subnetwork.secondary_ip_range[1].range_name
   }
 
   # Specify the list of CIDRs which can access the master's API
@@ -284,26 +284,26 @@ resource "google_container_cluster" "vault" {
     google_project_service.service,
     google_project_iam_member.service-account,
     google_project_iam_member.service-account-custom,
-    google_compute_router_nat.vault-nat,
+    google_compute_router_nat.consul-nat,
   ]
 }
 
 # Provision IP
-resource "google_compute_address" "vault" {
-  name    = "vault-lb"
+resource "google_compute_address" "consul" {
+  name    = "consul-lb"
   region  = var.region
-  project = local.vault_project_id
+  project = local.consul_project_id
 
   depends_on = [google_project_service.service]
 }
 
 
 #output "address" {
-#  value = google_compute_address.vault.address
+#  value = google_compute_address.consul.address
 #}
 
 output "project" {
-  value = local.vault_project_id
+  value = local.consul_project_id
 }
 
 output "region" {

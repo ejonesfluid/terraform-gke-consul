@@ -16,7 +16,7 @@ variable "project" {
 
 variable "project_prefix" {
   type        = string
-  default     = "vault-"
+  default     = "consul-"
   description = "String value to prefix the generated project ID with."
 }
 
@@ -56,27 +56,6 @@ variable "project_services" {
   description = "List of services to enable on the project."
 }
 
-#
-# KMS options
-# ------------------------------
-
-variable "kms_key_ring_prefix" {
-  type        = string
-  default     = "vault-"
-  description = "String value to prefix the generated key ring with."
-}
-
-variable "kms_key_ring" {
-  type        = string
-  default     = ""
-  description = "String value to use for the name of the KMS key ring. This exists for backwards-compatability for users of the existing configurations. Please use kms_key_ring_prefix instead."
-}
-
-variable "kms_crypto_key" {
-  type        = string
-  default     = "vault-init"
-  description = "String value to use for the name of the KMS crypto key."
-}
 
 #
 # Kubernetes options
@@ -146,21 +125,6 @@ variable "kubernetes_master_authorized_networks" {
   description = "List of CIDR blocks to allow access to the master's API endpoint. This is specified as a slice of objects, where each object has a display_name and cidr_block attribute. The default behavior is to allow anyone (0.0.0.0/0) access to the endpoint. You should restrict access to external IPs that need to access the cluster."
 }
 
-#
-# Vault options
-# ------------------------------
-
-variable "num_vault_pods" {
-  type        = number
-  default     = 1
-  description = "Number of Vault pods to run. Anti-affinity rules spread pods across available nodes. Please use an odd number for better availability."
-}
-
-variable "vault_container" {
-  type        = string
-  default     = "vault:1.2.4"
-  description = "Name of the Vault container image to deploy. This can be specified like \"container:version\" or as a full container URL."
-}
 
 #
 # Helm options

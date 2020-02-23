@@ -7,10 +7,10 @@ variable "helm_version" {
 
 provider "kubernetes" {
   load_config_file = false
-  host             = google_container_cluster.vault.endpoint
+  host             = google_container_cluster.default.endpoint
 
   cluster_ca_certificate = base64decode(
-    google_container_cluster.vault.master_auth[0].cluster_ca_certificate,
+    google_container_cluster.default.master_auth[0].cluster_ca_certificate,
   )
   token = data.google_client_config.current.access_token
 }
@@ -22,7 +22,7 @@ resource "kubernetes_namespace" "consul" {
 }
 resource "kubernetes_service_account" "helm_account" {
   depends_on = [
-    "google_container_cluster.vault",
+    "google_container_cluster.default",
   ]
   metadata {
     name      = var.helm_account_name
@@ -58,11 +58,11 @@ provider "helm" {
   service_account = kubernetes_service_account.helm_account.metadata.0.name
 
   kubernetes {
-    host                   = google_container_cluster.vault.endpoint
+    host                   = google_container_cluster.default.endpoint
     token                  = data.google_client_config.current.access_token
-    client_certificate     = "${base64decode(google_container_cluster.vault.master_auth.0.client_certificate)}"
-    client_key             = "${base64decode(google_container_cluster.vault.master_auth.0.client_key)}"
-    cluster_ca_certificate = "${base64decode(google_container_cluster.vault.master_auth.0.cluster_ca_certificate)}"
+    client_certificate     = "${base64decode(google_container_cluster.default.master_auth.0.client_certificate)}"
+    client_key             = "${base64decode(google_container_cluster.default.master_auth.0.client_key)}"
+    cluster_ca_certificate = "${base64decode(google_container_cluster.default.master_auth.0.cluster_ca_certificate)}"
   }
 }
 
