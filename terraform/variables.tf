@@ -11,7 +11,7 @@ variable "region" {
 variable "project" {
   type        = string
   default     = ""
-  description = "Project ID where Terraform is authenticated to run to create additional projects. If provided, Terraform will great the GKE and Vault cluster inside this project. If not given, Terraform will generate a new project."
+  description = "Project ID where Terraform is authenticated to run to create additional projects. If provided, Terraform will great the GKE and Consul cluster inside this project. If not given, Terraform will generate a new project."
 }
 
 variable "project_prefix" {
@@ -39,7 +39,7 @@ variable "service_account_iam_roles" {
 variable "service_account_custom_iam_roles" {
   type        = list(string)
   default     = []
-  description = "List of arbitrary additional IAM roles to attach to the service account on the Vault nodes."
+  description = "List of arbitrary additional IAM roles to attach to the service account on the Consul nodes."
 }
 
 variable "project_services" {

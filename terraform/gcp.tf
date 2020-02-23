@@ -47,7 +47,7 @@ locals {
 # Create the consul service account
 resource "google_service_account" "consul-server" {
   account_id   = "consul-server"
-  display_name = "Vault Server"
+  display_name = "Consul Server"
   project      = local.consul_project_id
 }
 
