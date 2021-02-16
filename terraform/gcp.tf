@@ -10,20 +10,20 @@ provider "google-beta" {
 }
 
 # Generate a random id for the project - GCP projects must have globally
-# unique names
-resource "random_id" "project_random" {
-  prefix      = var.project_prefix
-  byte_length = "8"
-}
+# # unique names
+# resource "random_id" "project_random" {
+#   prefix      = var.project_prefix
+#   byte_length = "8"
+# }
 
-# Create the project if one isn't specified
-resource "google_project" "consul" {
-  count           = var.project != "" ? 0 : 1
-  name            = random_id.project_random.hex
-  project_id      = random_id.project_random.hex
-  #org_id          = var.org_id
-  #billing_account = var.billing_account
-}
+# # Create the project if one isn't specified
+# resource "google_project" "consul" {
+#   count           = var.project != "" ? 0 : 1
+#   name            = random_id.project_random.hex
+#   project_id      = random_id.project_random.hex
+#   #org_id          = var.org_id
+#   #billing_account = var.billing_account
+# }
 
 # Or use an existing project, if defined
 data "google_project" "consul" {
@@ -78,9 +78,7 @@ resource "google_project_service" "service" {
   project = local.consul_project_id
   service = element(var.project_services, count.index)
 
-  # Do not disable the service on destroy. On destroy, we are going to
-  # destroy the project, but we need the APIs available to destroy the
-  # underlying resources.
+
   disable_on_destroy = false
 }
 
@@ -102,7 +100,7 @@ resource "google_compute_network" "consul-network" {
 
   depends_on = [google_project_service.service]
 }
-
+// TODO need to incorporate fluidtruck networks into
 # Create subnets
 resource "google_compute_subnetwork" "consul-subnetwork" {
   name          = "consul-subnetwork"
